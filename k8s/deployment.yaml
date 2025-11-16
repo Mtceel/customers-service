@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customers-service
+  namespace: platform-services
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: customers-service
+  template:
+    metadata:
+      labels:
+        app: customers-service
+    spec:
+      containers:
+      - name: customers-service
+        image: mtceel/customers-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3004
+        env:
+        - name: PORT
+          value: "3004"
+        - name: DATABASE_URL
+          value: "postgres://postgres:postgres123@postgres.platform-services.svc.cluster.local:5432/saas_platform"
+        - name: REDIS_URL
+          value: "redis://redis.platform-services.svc.cluster.local:6379"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "300m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3004
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3004
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: customers-service
+  namespace: platform-services
+spec:
+  type: ClusterIP
+  selector:
+    app: customers-service
+  ports:
+  - port: 80
+    targetPort: 3004
